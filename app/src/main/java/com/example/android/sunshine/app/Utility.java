@@ -34,6 +34,7 @@ public class Utility {
     public static float DEFAULT_LATLONG = 0F;
     public static String LOW_TEMP = "LOW_TEMP";
     public static String HIGH_TEMP = "HIGH_TEMP";
+    public static String WEATHER_ICON = "WEATHER_ICON";
 
 
     public static boolean isLocationLatLonAvailable(Context context) {

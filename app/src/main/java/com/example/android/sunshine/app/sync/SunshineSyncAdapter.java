@@ -38,6 +38,7 @@ import com.example.android.sunshine.app.data.WeatherContract;
 import com.example.android.sunshine.app.muzei.WeatherMuzeiSource;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.PendingResult;
+import com.google.android.gms.wearable.Asset;
 import com.google.android.gms.wearable.DataApi;
 import com.google.android.gms.wearable.PutDataMapRequest;
 import com.google.android.gms.wearable.PutDataRequest;
@@ -48,6 +49,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -522,9 +524,13 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
 
                     //send an update to the watch
                     Log.i("WATCH", "Sending update to watch");
+                    Bitmap bitmap = BitmapFactory.decodeResource(getContext().getResources(),iconId);
+                    Asset weatherIcon = createAssetFromBitmap(bitmap);
+
                     PutDataMapRequest putDataMapReq = PutDataMapRequest.create("/sunshine");
                     putDataMapReq.getDataMap().putString(Utility.LOW_TEMP, lowTemp);
                     putDataMapReq.getDataMap().putString(Utility.HIGH_TEMP, highTemp);
+                    putDataMapReq.getDataMap().putAsset(Utility.WEATHER_ICON, weatherIcon);
                     //// TODO: 24/01/2016 remove line
                     putDataMapReq.getDataMap().putLong("timestamp", new Date().getTime());
                     PutDataRequest putDataReq = putDataMapReq.asPutDataRequest();
@@ -543,6 +549,12 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
                 cursor.close();
             }
         }
+    }
+
+    private static Asset createAssetFromBitmap(Bitmap bitmap) {
+        final ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteStream);
+        return Asset.createFromBytes(byteStream.toByteArray());
     }
 
     /**

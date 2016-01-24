@@ -21,6 +21,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -38,6 +40,8 @@ import android.view.WindowInsets;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.wearable.Asset;
 import com.google.android.gms.wearable.DataApi;
 import com.google.android.gms.wearable.DataEvent;
 import com.google.android.gms.wearable.DataEventBuffer;
@@ -46,6 +50,7 @@ import com.google.android.gms.wearable.DataMap;
 import com.google.android.gms.wearable.DataMapItem;
 import com.google.android.gms.wearable.Wearable;
 
+import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -104,16 +109,24 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
         final Handler mUpdateTimeHandler = new EngineHandler(this);
         boolean mRegisteredTimeZoneReceiver = false;
         Paint mBackgroundPaint;
-        Paint mTextPaint;
+        Paint mPrimaryTextPaint;
+        Paint mSecondaryTextPaint;
+        Paint mHighTextPaint;
+        Paint mLowTextPaint;
+        Paint mWeatherIconPaint;
         boolean mAmbient;
         Calendar mCalendar;
         SimpleDateFormat mDayOfWeekFormat;
         java.text.DateFormat mDateFormat;
         GoogleApiClient mGoogleApiClient;
+
         String LOW_TEMP = "LOW_TEMP";
         String HIGH_TEMP = "HIGH_TEMP";
-        String mHighTemp, mLowTemp;
+        String WEATHER_ICON = "WEATHER_ICON";
 
+        String mHighTemp = "-";
+        String mLowTemp = "-";
+        Bitmap mWeatherIconBitmap;
 
         final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
             @Override
@@ -151,8 +164,13 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
             mBackgroundPaint = new Paint();
             mBackgroundPaint.setColor(resources.getColor(R.color.background_sunny));
 
-            mTextPaint = new Paint();
-            mTextPaint = createTextPaint(resources.getColor(R.color.digital_text));
+            mPrimaryTextPaint = new Paint();
+            mPrimaryTextPaint = createTextPaint(resources.getColor(R.color.primary_text));
+
+            mSecondaryTextPaint = new Paint();
+            mSecondaryTextPaint = createTextPaint(resources.getColor(R.color.secondary_text));
+
+            mWeatherIconPaint = new Paint();
 
             mCalendar = Calendar.getInstance();
             initFormats();
@@ -177,7 +195,7 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
 
         @Override
         public void onConnectionFailed(ConnectionResult connectionResult) {
-            Log.i("WATCH","onConnectionFailed");
+            Log.i("WATCH", "onConnectionFailed");
         }
 
         @Override
@@ -195,6 +213,10 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
 
                         Log.i("WATCH","High temp: "+mHighTemp);
                         Log.i("WATCH","Low temp: "+mLowTemp);
+
+                        Asset weatherIconAsset = dataMap.getAsset(WEATHER_ICON);
+                        loadBitmapFromAsset(weatherIconAsset);
+
                     }
                 } else if (event.getType() == DataEvent.TYPE_DELETED) {
                     // DataItem deleted
@@ -218,6 +240,27 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
             paint.setTypeface(NORMAL_TYPEFACE);
             paint.setAntiAlias(true);
             return paint;
+        }
+
+        // TODO: 24/01/2016 make this method async
+        public void loadBitmapFromAsset(Asset asset) {
+            if (asset == null) {
+                Log.e("WATCH", "Asset received on watch face is null");
+                return;
+            }
+            // convert asset into a file descriptor and block until it's ready
+            Wearable.DataApi.getFdForAsset(
+                    mGoogleApiClient, asset).setResultCallback(new ResultCallback<DataApi.GetFdForAssetResult>() {
+                @Override
+                public void onResult(DataApi.GetFdForAssetResult getFdForAssetResult) {
+                    InputStream assetInputStream = getFdForAssetResult.getInputStream();
+                    if (assetInputStream == null) {
+                        Log.w("WATCH", "Requested an unknown Asset.");
+                        return;
+                    }
+                    mWeatherIconBitmap = BitmapFactory.decodeStream(assetInputStream);
+                }
+            });
         }
 
         @Override
@@ -275,7 +318,8 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
             float textSize = resources.getDimension(isRound
                     ? R.dimen.digital_text_size_round : R.dimen.digital_text_size);
 
-            mTextPaint.setTextSize(textSize);
+            mPrimaryTextPaint.setTextSize(textSize);
+            mSecondaryTextPaint.setTextSize(textSize);
         }
 
         @Override
@@ -296,7 +340,7 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
             if (mAmbient != inAmbientMode) {
                 mAmbient = inAmbientMode;
                 if (mLowBitAmbient) {
-                    mTextPaint.setAntiAlias(!inAmbientMode);
+                    mPrimaryTextPaint.setAntiAlias(!inAmbientMode);
                 }
                 invalidate();
             }
@@ -340,10 +384,21 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
             // Draw H:MM AM
             long now = System.currentTimeMillis();
             mCalendar.setTimeInMillis(now);
-            String text = mAmbient
+            String timeText = mAmbient
                     ? String.format("%d:%02d %s", mCalendar.get(Calendar.HOUR), mCalendar.get(Calendar.MINUTE), getAmPmString(mCalendar.get(Calendar.AM_PM)))
                     : String.format("%d:%02d %s", mCalendar.get(Calendar.HOUR), mCalendar.get(Calendar.MINUTE), getAmPmString(mCalendar.get(Calendar.AM_PM)));
-            canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
+            canvas.drawText(timeText, mXOffset, mYOffset, mPrimaryTextPaint);
+
+            if(!mAmbient) {
+                canvas.drawText(mHighTemp,150, 200, mPrimaryTextPaint);
+                canvas.drawText(mLowTemp, 200, 200, mSecondaryTextPaint);
+                if(mWeatherIconBitmap != null) {
+                    canvas.drawBitmap(mWeatherIconBitmap, 100, 200, null);
+                }
+//                if(mWeatherIconBitmap != null) {
+//                    canvas.drawBitmap(mWeatherIconBitmap, 100, 150, mWeatherIconPaint);
+//                }
+            }
         }
 
         /**
