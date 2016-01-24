@@ -32,6 +32,9 @@ import java.util.Locale;
 public class Utility {
     // We'll default our latlong to 0. Yay, "Earth!"
     public static float DEFAULT_LATLONG = 0F;
+    public static String LOW_TEMP = "LOW_TEMP";
+    public static String HIGH_TEMP = "HIGH_TEMP";
+
 
     public static boolean isLocationLatLonAvailable(Context context) {
         SharedPreferences prefs

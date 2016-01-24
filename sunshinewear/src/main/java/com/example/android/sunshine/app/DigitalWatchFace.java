@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.franktan.sunshinewear;
+package com.example.android.sunshine.app;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -32,8 +32,19 @@ import android.os.Message;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
 import android.text.format.DateFormat;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.WindowInsets;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.wearable.DataApi;
+import com.google.android.gms.wearable.DataEvent;
+import com.google.android.gms.wearable.DataEventBuffer;
+import com.google.android.gms.wearable.DataItem;
+import com.google.android.gms.wearable.DataMap;
+import com.google.android.gms.wearable.DataMapItem;
+import com.google.android.gms.wearable.Wearable;
 
 import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
@@ -86,7 +97,10 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
         }
     }
 
-    private class Engine extends CanvasWatchFaceService.Engine {
+    private class Engine extends CanvasWatchFaceService.Engine implements
+            DataApi.DataListener,
+            GoogleApiClient.ConnectionCallbacks,
+            GoogleApiClient.OnConnectionFailedListener {
         final Handler mUpdateTimeHandler = new EngineHandler(this);
         boolean mRegisteredTimeZoneReceiver = false;
         Paint mBackgroundPaint;
@@ -95,6 +109,11 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
         Calendar mCalendar;
         SimpleDateFormat mDayOfWeekFormat;
         java.text.DateFormat mDateFormat;
+        GoogleApiClient mGoogleApiClient;
+        String LOW_TEMP = "LOW_TEMP";
+        String HIGH_TEMP = "HIGH_TEMP";
+        String mHighTemp, mLowTemp;
+
 
         final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
             @Override
@@ -137,11 +156,59 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
 
             mCalendar = Calendar.getInstance();
             initFormats();
+
+            mGoogleApiClient = new GoogleApiClient.Builder(getApplicationContext())
+                    .addApi(Wearable.API)
+                    .addConnectionCallbacks(Engine.this)
+                    .addOnConnectionFailedListener(Engine.this)
+                    .build();
+        }
+
+        @Override
+        public void onConnected(Bundle bundle) {
+            Log.i("WATCH","onConnected");
+            Wearable.DataApi.addListener(mGoogleApiClient, Engine.this);
+        }
+
+        @Override
+        public void onConnectionSuspended(int i) {
+            Log.i("WATCH", "onConnectionSuspended");
+        }
+
+        @Override
+        public void onConnectionFailed(ConnectionResult connectionResult) {
+            Log.i("WATCH","onConnectionFailed");
+        }
+
+        @Override
+        public void onDataChanged(DataEventBuffer dataEventBuffer) {
+            Log.i("WATCH", "onDataChanged");
+            for (DataEvent event : dataEventBuffer) {
+                if (event.getType() == DataEvent.TYPE_CHANGED) {
+                    // DataItem changed
+                    DataItem item = event.getDataItem();
+                    if (item.getUri().getPath().compareTo("/sunshine") == 0) {
+                        DataMap dataMap = DataMapItem.fromDataItem(item).getDataMap();
+
+                        mHighTemp = dataMap.getString(HIGH_TEMP);
+                        mLowTemp = dataMap.getString(LOW_TEMP);
+
+                        Log.i("WATCH","High temp: "+mHighTemp);
+                        Log.i("WATCH","Low temp: "+mLowTemp);
+                    }
+                } else if (event.getType() == DataEvent.TYPE_DELETED) {
+                    // DataItem deleted
+                }
+            }
         }
 
         @Override
         public void onDestroy() {
             mUpdateTimeHandler.removeMessages(MSG_UPDATE_TIME);
+            Wearable.DataApi.removeListener(mGoogleApiClient, Engine.this);
+            if(mGoogleApiClient != null && mGoogleApiClient.isConnected()) {
+                mGoogleApiClient.disconnect();
+            }
             super.onDestroy();
         }
 
@@ -160,11 +227,18 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
             if (visible) {
                 registerReceiver();
 
+                mGoogleApiClient.connect();
+
                 // Update time zone in case it changed while we weren't visible.
                 mCalendar.setTimeZone(TimeZone.getDefault());
                 initFormats();
             } else {
                 unregisterReceiver();
+
+                Wearable.DataApi.removeListener(mGoogleApiClient, Engine.this);
+                if(mGoogleApiClient != null && mGoogleApiClient.isConnected()) {
+                    mGoogleApiClient.disconnect();
+                }
             }
 
             // Whether the timer should be running depends on whether we're visible (as well as
