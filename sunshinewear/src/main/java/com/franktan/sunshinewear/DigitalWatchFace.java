@@ -249,8 +249,6 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
                 case TAP_TYPE_TAP:
                     // The user has completed the tap gesture.
                     mTapCount++;
-                    mBackgroundPaint.setColor(resources.getColor(mTapCount % 2 == 0 ?
-                            R.color.background : R.color.background2));
                     break;
             }
             invalidate();
@@ -265,12 +263,12 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
                 canvas.drawRect(0, 0, bounds.width(), bounds.height(), mBackgroundPaint);
             }
 
-            // Draw H:MM in ambient mode or H:MM:SS in interactive mode.
+            // Draw H:MM AM
             long now = System.currentTimeMillis();
             mCalendar.setTimeInMillis(now);
             String text = mAmbient
-                    ? String.format("%d:%02d", mCalendar.get(Calendar.HOUR), mCalendar.get(Calendar.MINUTE))
-                    : String.format("%d:%02d:%02d", mCalendar.get(Calendar.HOUR), mCalendar.get(Calendar.MINUTE), mCalendar.get(Calendar.SECOND));
+                    ? String.format("%d:%02d %s", mCalendar.get(Calendar.HOUR), mCalendar.get(Calendar.MINUTE), getAmPmString(mCalendar.get(Calendar.AM_PM)))
+                    : String.format("%d:%02d %s", mCalendar.get(Calendar.HOUR), mCalendar.get(Calendar.MINUTE), getAmPmString(mCalendar.get(Calendar.AM_PM)));
             canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
         }
 
@@ -311,6 +309,10 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
             mDayOfWeekFormat.setCalendar(mCalendar);
             mDateFormat = DateFormat.getDateFormat(DigitalWatchFace.this);
             mDateFormat.setCalendar(mCalendar);
+        }
+
+        private String getAmPmString(int amPm) {
+            return amPm == Calendar.AM ? getString(R.string.am_string) : getString(R.string.pm_string);
         }
     }
 }
