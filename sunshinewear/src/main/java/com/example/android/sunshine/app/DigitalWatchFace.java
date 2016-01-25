@@ -411,7 +411,6 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
                     break;
                 case TAP_TYPE_TAP:
                     // The user has completed the tap gesture.
-                    mTapCount++;
                     break;
             }
             invalidate();
