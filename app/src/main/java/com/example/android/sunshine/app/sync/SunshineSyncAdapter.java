@@ -57,7 +57,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Date;
 import java.util.Vector;
 import java.util.concurrent.ExecutionException;
 
@@ -69,7 +68,7 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     // 60 seconds (1 minute) * 180 = 3 hours
     public static final int SYNC_INTERVAL = 60 * 180;
     public static final int SYNC_FLEXTIME = SYNC_INTERVAL/3;
-    private static final long DAY_IN_MILLIS = 0;//1000 * 60 * 60 * 24;
+    private static final long DAY_IN_MILLIS = 1000 * 60 * 60 * 24;
     private static final int WEATHER_NOTIFICATION_ID = 3004;
 
 
@@ -431,7 +430,7 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
             String lastNotificationKey = context.getString(R.string.pref_last_notification);
             long lastSync = prefs.getLong(lastNotificationKey, 0);
 
-            if (System.currentTimeMillis() - lastSync >= DAY_IN_MILLIS) {
+            //if (System.currentTimeMillis() - lastSync >= DAY_IN_MILLIS) {
                 // Last sync was more than 1 day ago, let's send a notification with the weather.
                 String locationQuery = Utility.getPreferredLocation(context);
 
@@ -485,42 +484,44 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
                             highTemp,
                             lowTemp);
 
-                    // NotificationCompatBuilder is a very convenient way to build backward-compatible
-                    // notifications.  Just throw in some data.
-                    NotificationCompat.Builder mBuilder =
-                            new NotificationCompat.Builder(getContext())
-                                    .setColor(resources.getColor(R.color.primary_light))
-                                    .setSmallIcon(iconId)
-                                    .setLargeIcon(largeIcon)
-                                    .setContentTitle(title)
-                                    .setContentText(contentText);
+                    if (System.currentTimeMillis() - lastSync >= DAY_IN_MILLIS) {
+                        // NotificationCompatBuilder is a very convenient way to build backward-compatible
+                        // notifications.  Just throw in some data.
+                        NotificationCompat.Builder mBuilder =
+                                new NotificationCompat.Builder(getContext())
+                                        .setColor(resources.getColor(R.color.primary_light))
+                                        .setSmallIcon(iconId)
+                                        .setLargeIcon(largeIcon)
+                                        .setContentTitle(title)
+                                        .setContentText(contentText);
 
-                    // Make something interesting happen when the user clicks on the notification.
-                    // In this case, opening the app is sufficient.
-                    Intent resultIntent = new Intent(context, MainActivity.class);
+                        // Make something interesting happen when the user clicks on the notification.
+                        // In this case, opening the app is sufficient.
+                        Intent resultIntent = new Intent(context, MainActivity.class);
 
-                    // The stack builder object will contain an artificial back stack for the
-                    // started Activity.
-                    // This ensures that navigating backward from the Activity leads out of
-                    // your application to the Home screen.
-                    TaskStackBuilder stackBuilder = TaskStackBuilder.create(context);
-                    stackBuilder.addNextIntent(resultIntent);
-                    PendingIntent resultPendingIntent =
-                            stackBuilder.getPendingIntent(
-                                    0,
-                                    PendingIntent.FLAG_UPDATE_CURRENT
-                            );
-                    mBuilder.setContentIntent(resultPendingIntent);
+                        // The stack builder object will contain an artificial back stack for the
+                        // started Activity.
+                        // This ensures that navigating backward from the Activity leads out of
+                        // your application to the Home screen.
+                        TaskStackBuilder stackBuilder = TaskStackBuilder.create(context);
+                        stackBuilder.addNextIntent(resultIntent);
+                        PendingIntent resultPendingIntent =
+                                stackBuilder.getPendingIntent(
+                                        0,
+                                        PendingIntent.FLAG_UPDATE_CURRENT
+                                );
+                        mBuilder.setContentIntent(resultPendingIntent);
 
-                    NotificationManager mNotificationManager =
-                            (NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
-                    // WEATHER_NOTIFICATION_ID allows you to update the notification later on.
-                    mNotificationManager.notify(WEATHER_NOTIFICATION_ID, mBuilder.build());
+                        NotificationManager mNotificationManager =
+                                (NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+                        // WEATHER_NOTIFICATION_ID allows you to update the notification later on.
+                        mNotificationManager.notify(WEATHER_NOTIFICATION_ID, mBuilder.build());
 
-                    //refreshing last sync
-                    SharedPreferences.Editor editor = prefs.edit();
-                    editor.putLong(lastNotificationKey, System.currentTimeMillis());
-                    editor.commit();
+                        //refreshing last sync
+                        SharedPreferences.Editor editor = prefs.edit();
+                        editor.putLong(lastNotificationKey, System.currentTimeMillis());
+                        editor.commit();
+                    }
 
                     //send an update to the watch
                     Log.i("WATCH", "Sending update to watch");
@@ -531,8 +532,7 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
                     putDataMapReq.getDataMap().putString(Utility.LOW_TEMP, lowTemp);
                     putDataMapReq.getDataMap().putString(Utility.HIGH_TEMP, highTemp);
                     putDataMapReq.getDataMap().putAsset(Utility.WEATHER_ICON, weatherIcon);
-                    //// TODO: 24/01/2016 remove line
-                    putDataMapReq.getDataMap().putLong("timestamp", new Date().getTime());
+//                    putDataMapReq.getDataMap().putLong("timestamp", new Date().getTime());
                     PutDataRequest putDataReq = putDataMapReq.asPutDataRequest();
                     putDataReq.setUrgent();
                     PendingResult<DataApi.DataItemResult> pendingResult =
@@ -547,7 +547,7 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
                     }
                 }
                 cursor.close();
-            }
+            //}
         }
     }
 
