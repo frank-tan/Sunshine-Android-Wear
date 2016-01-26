@@ -36,6 +36,7 @@ import android.os.Message;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.SurfaceHolder;
 import android.view.WindowInsets;
 
@@ -187,6 +188,8 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
                     .setBackgroundVisibility(WatchFaceStyle.BACKGROUND_VISIBILITY_INTERRUPTIVE)
                     .setShowSystemUiTime(false)
                     .setAcceptsTapEvents(true)
+                    .setHotwordIndicatorGravity(Gravity.TOP | Gravity.CENTER)
+                    .setViewProtectionMode(WatchFaceStyle.PROTECT_HOTWORD_INDICATOR)
                     .build());
             Resources resources = DigitalWatchFace.this.getResources();
             mTimeYOffset = resources.getDimension(R.dimen.digital_time_y_offset);
