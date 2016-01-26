@@ -114,20 +114,29 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
 
         final Handler mUpdateTimeHandler = new EngineHandler(this);
         boolean mRegisteredTimeZoneReceiver = false;
+
+        /**
+         * Whether the display supports fewer bits for each color in ambient mode. When true, we
+         * disable anti-aliasing in ambient mode.
+         */
+        boolean mLowBitAmbient;
         boolean mAmbient;
+
+        // date and format objects
         Calendar mCalendar;
         Date mDate;
+        SimpleDateFormat mDateFormat;
+        SimpleDateFormat mTimeFormat;
 
+        // paint for drawing different elements
         Paint mBackgroundPaint;
         Paint mWhiteTextPaint;
         Paint mGreyTextPaint;
         Paint mWeatherIconPaint;
 
-        SimpleDateFormat mDateFormat;
-        SimpleDateFormat mTimeFormat;
-
         GoogleApiClient mGoogleApiClient;
 
+        // tags to get weather info from data API
         String LOW_TEMP = "LOW_TEMP";
         String HIGH_TEMP = "HIGH_TEMP";
         String WEATHER_ICON = "WEATHER_ICON";
@@ -137,15 +146,7 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
         String mLowTemp;
         Bitmap mWeatherIconBitmap;
 
-        final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                mCalendar.setTimeZone(TimeZone.getDefault());
-                initFormats();
-                invalidate();
-            }
-        };
-
+        // position to draw elements
         float mTimeXOffset;
         float mTimeYOffset;
         float mDateXOffset;
@@ -158,21 +159,24 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
         float mHighYOffset;
         float mLowXOffset;
         float mLowYOffset;
-
         float mSeparatorLength;
 
-        int iconSize;
-
+        // size of elements
         float mTimeTextSize;
         float mDateTextSize;
         float mHighTempTextSize;
         float mLowTempTextSize;
+        int iconSize;
 
-        /**
-         * Whether the display supports fewer bits for each color in ambient mode. When true, we
-         * disable anti-aliasing in ambient mode.
-         */
-        boolean mLowBitAmbient;
+        final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                // Time zone change - redraw watch face
+                mCalendar.setTimeZone(TimeZone.getDefault());
+                initFormats();
+                invalidate();
+            }
+        };
 
         @Override
         public void onCreate(SurfaceHolder holder) {
@@ -187,7 +191,7 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
             Resources resources = DigitalWatchFace.this.getResources();
             mTimeYOffset = resources.getDimension(R.dimen.digital_time_y_offset);
 
-            // load background
+            // initialize paint objects
             mBackgroundPaint = new Paint();
             mBackgroundPaint.setColor(resources.getColor(R.color.background_sunny));
 
@@ -202,6 +206,7 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
             mCalendar = Calendar.getInstance();
             initFormats();
 
+            // build data access client
             mGoogleApiClient = new GoogleApiClient.Builder(getApplicationContext())
                     .addApi(Wearable.API)
                     .addConnectionCallbacks(Engine.this)
@@ -209,6 +214,10 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
                     .build();
         }
 
+        /**
+         * When the watch face is used initially, access the data layer on the connected device and
+         * retrieve weather information
+         */
         void getInitialWeatherData () {
             Wearable.NodeApi.getConnectedNodes(mGoogleApiClient).setResultCallback(new ResultCallback<NodeApi.GetConnectedNodesResult>() {
                 @Override
@@ -245,6 +254,10 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
             });
         }
 
+        /**
+         * Get weather info from the dataMap object provided
+         * @param dataMap
+         */
         void extractWeatherData (DataMap dataMap) {
             mHighTemp = dataMap.getString(HIGH_TEMP);
             mLowTemp = dataMap.getString(LOW_TEMP);
@@ -258,7 +271,10 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
         @Override
         public void onConnected(Bundle bundle) {
             Log.i("WATCH","onConnected");
+            // get initial weather info from connected device
             getInitialWeatherData();
+
+            // listen to data change event
             Wearable.DataApi.addListener(mGoogleApiClient, Engine.this);
         }
 
@@ -269,7 +285,7 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
 
         @Override
         public void onConnectionFailed(ConnectionResult connectionResult) {
-            Log.i("WATCH", "onConnectionFailed");
+            Log.w("WATCH", "onConnectionFailed");
         }
 
         @Override
@@ -293,13 +309,22 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
         @Override
         public void onDestroy() {
             mUpdateTimeHandler.removeMessages(MSG_UPDATE_TIME);
+
+            // stop listen to the data change event
             Wearable.DataApi.removeListener(mGoogleApiClient, Engine.this);
+
+            // disconnect from data layer
             if(mGoogleApiClient != null && mGoogleApiClient.isConnected()) {
                 mGoogleApiClient.disconnect();
             }
             super.onDestroy();
         }
 
+        /**
+         * Create a text paint with specified colour
+         * @param textColor
+         * @return
+         */
         private Paint createTextPaint(int textColor) {
             Paint paint = new Paint();
             paint.setColor(textColor);
@@ -308,12 +333,16 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
             return paint;
         }
 
+        /**
+         * Load bit map from asset provided
+         * @param asset
+         */
         public void loadBitmapFromAsset(Asset asset) {
             if (asset == null) {
                 Log.e("WATCH", "Asset received on watch face is null");
                 return;
             }
-            // convert asset into a file descriptor and block until it's ready
+            // convert asset into a file descriptor and get notified when it's ready
             Wearable.DataApi.getFdForAsset(
                     mGoogleApiClient, asset).setResultCallback(new ResultCallback<DataApi.GetFdForAssetResult>() {
                 @Override
@@ -381,6 +410,7 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
             mTimeXOffset = resources.getDimension(isRound
                     ? R.dimen.digital_x_offset_round : R.dimen.digital_time_x_offset);
 
+            // TODO: 26/01/2016 move to onCreate
             mDateXOffset = resources.getDimension(R.dimen.digital_date_x_offset);
             mDateYOffset = resources.getDimension(R.dimen.digital_date_y_offset);
             mSeparatorXOffset = resources.getDimension(R.dimen.digital_separator_x_offset);
@@ -538,6 +568,9 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
             }
         }
 
+        /**
+         * initialize the date and time format
+         */
         private void initFormats() {
             mDateFormat = new SimpleDateFormat("EEE, dd MMM yyyy", Locale.getDefault());
             mDateFormat.setCalendar(mCalendar);
