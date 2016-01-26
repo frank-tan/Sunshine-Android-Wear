@@ -124,6 +124,7 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
         Paint mWeatherIconPaint;
 
         SimpleDateFormat mDateFormat;
+        SimpleDateFormat mTimeFormat;
 
         GoogleApiClient mGoogleApiClient;
 
@@ -145,10 +146,24 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
             }
         };
 
-        float mXOffset;
-        float mYOffset;
+        float mTimeXOffset;
+        float mTimeYOffset;
+        float mDateXOffset;
+        float mDateYOffset;
+        float mSeparatorXOffset;
+        float mSeparatorYOffset;
+        float mIconXOffset;
+        float mIconYOffset;
+        float mHighXOffset;
+        float mHighYOffset;
+        float mLowXOffset;
+        float mLowYOffset;
+
+        float mSeparatorLength;
+
+        int iconSize;
+
         float mTimeTextSize;
-        float mAmPmTextSize;
         float mDateTextSize;
         float mHighTempTextSize;
         float mLowTempTextSize;
@@ -170,7 +185,7 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
                     .setAcceptsTapEvents(true)
                     .build());
             Resources resources = DigitalWatchFace.this.getResources();
-            mYOffset = resources.getDimension(R.dimen.digital_y_offset);
+            mTimeYOffset = resources.getDimension(R.dimen.digital_time_y_offset);
 
             // load background
             mBackgroundPaint = new Paint();
@@ -293,7 +308,6 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
             return paint;
         }
 
-        // TODO: 24/01/2016 make this method async
         public void loadBitmapFromAsset(Asset asset) {
             if (asset == null) {
                 Log.e("WATCH", "Asset received on watch face is null");
@@ -364,12 +378,27 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
             // Load resources that have alternate values for round watches.
             Resources resources = DigitalWatchFace.this.getResources();
             boolean isRound = insets.isRound();
-            mXOffset = resources.getDimension(isRound
-                    ? R.dimen.digital_x_offset_round : R.dimen.digital_x_offset);
+            mTimeXOffset = resources.getDimension(isRound
+                    ? R.dimen.digital_x_offset_round : R.dimen.digital_time_x_offset);
+
+            mDateXOffset = resources.getDimension(R.dimen.digital_date_x_offset);
+            mDateYOffset = resources.getDimension(R.dimen.digital_date_y_offset);
+            mSeparatorXOffset = resources.getDimension(R.dimen.digital_separator_x_offset);
+            mSeparatorYOffset = resources.getDimension(R.dimen.digital_separator_y_offset);
+            mIconXOffset = resources.getDimension(R.dimen.digital_icon_x_offset);
+            mIconYOffset = resources.getDimension(R.dimen.digital_icon_y_offset);
+            mHighXOffset = resources.getDimension(R.dimen.digital_high_x_offset);
+            mHighYOffset = resources.getDimension(R.dimen.digital_high_y_offset);
+            mLowXOffset = resources.getDimension(R.dimen.digital_low_x_offset);
+            mLowYOffset = resources.getDimension(R.dimen.digital_low_y_offset);
+
+            mSeparatorLength = resources.getDimension(R.dimen.digital_separator_length);
+
+            iconSize = resources.getInteger(R.integer.icon_size);
+
             mTimeTextSize = resources.getDimension(isRound
                     ? R.dimen.digital_text_size_round : R.dimen.digital_text_size);
 
-            mAmPmTextSize = resources.getDimension(R.dimen.digital_am_pm_text_size);
             mDateTextSize = resources.getDimension(R.dimen.digital_date_text_size);
             mHighTempTextSize = resources.getDimension(R.dimen.digital_high_temp_size);
             mLowTempTextSize = resources.getDimension(R.dimen.digital_low_temp_text_size);
@@ -434,48 +463,45 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
                 canvas.drawRect(0, 0, bounds.width(), bounds.height(), mBackgroundPaint);
             }
 
-            // Draw H:MM AM
+            // Draw time
             long now = System.currentTimeMillis();
             mCalendar.setTimeInMillis(now);
             mDate.setTime(now);
-            String timeText = String.format("%02d:%02d", mCalendar.get(Calendar.HOUR), mCalendar.get(Calendar.MINUTE));
-            String amPmText = getAmPmString(mCalendar.get(Calendar.AM_PM));
-            String dateText = mDateFormat.format(mDate);
+            String timeText = mTimeFormat.format(mDate);
 
             mWhiteTextPaint.setTextSize(mTimeTextSize);
-            canvas.drawText(timeText, mXOffset, mYOffset, mWhiteTextPaint);
-
-            mWhiteTextPaint.setTextSize(mAmPmTextSize);
-            canvas.drawText(amPmText, mXOffset + 140, mYOffset, mWhiteTextPaint);
-
+            canvas.drawText(timeText, mTimeXOffset, mTimeYOffset, mWhiteTextPaint);
 
             if(!mAmbient) {
+                // Draw date
+                String dateText = mDateFormat.format(mDate);
                 mGreyTextPaint.setTextSize(mDateTextSize);
-                canvas.drawText(dateText, mXOffset, mYOffset + 35, mGreyTextPaint);
+                canvas.drawText(dateText, mDateXOffset, mDateYOffset, mGreyTextPaint);
 
+                // Draw weather information if available
                 if(mHighTemp != null && mLowTemp != null) {
-
-
+                    // Draw high
                     mWhiteTextPaint.setTextSize(mHighTempTextSize);
-                    canvas.drawText(mHighTemp, 160, 255, mWhiteTextPaint);
-
+                    canvas.drawText(mHighTemp, mHighXOffset, mHighYOffset, mWhiteTextPaint);
+                    // Draw low
                     mGreyTextPaint.setTextSize(mLowTempTextSize);
-                    canvas.drawText(mLowTemp, 220, 255, mGreyTextPaint);
-
+                    canvas.drawText(mLowTemp, mLowXOffset, mLowYOffset, mGreyTextPaint);
+                    // Draw separator
                     mGreyTextPaint.setStrokeWidth(0);
-                    canvas.drawLine(120, 190, 200, 190, mGreyTextPaint);
+                    canvas.drawLine(mSeparatorXOffset, mSeparatorYOffset, mSeparatorXOffset + mSeparatorLength, mSeparatorYOffset, mGreyTextPaint);
                 }
                 if(mWeatherIconBitmap != null) {
-                    float ratio = 50 / (float) mWeatherIconBitmap.getWidth();
-                    float middleX = 50 / 2.0f;
-                    float middleY = 50 / 2.0f;
+                    // Scale and draw icon
+                    float ratio = iconSize / (float) mWeatherIconBitmap.getWidth();
+                    float middleX = iconSize / 2.0f;
+                    float middleY = iconSize / 2.0f;
 
                     Matrix scaleMatrix = new Matrix();
-                    scaleMatrix.setScale(ratio, ratio, 90+middleX, 260+middleY);
+                    scaleMatrix.setScale(ratio, ratio, mIconXOffset + middleX, mIconYOffset + middleY);
                     canvas.setMatrix(scaleMatrix);
                     mWeatherIconPaint.setFilterBitmap(true);
 
-                    canvas.drawBitmap(mWeatherIconBitmap, 90*ratio, 260*ratio, mWeatherIconPaint);
+                    canvas.drawBitmap(mWeatherIconBitmap, mIconXOffset * ratio, mIconYOffset * ratio, mWeatherIconPaint);
                 }
             }
         }
@@ -515,11 +541,11 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
         private void initFormats() {
             mDateFormat = new SimpleDateFormat("EEE, dd MMM yyyy", Locale.getDefault());
             mDateFormat.setCalendar(mCalendar);
-            mDate = new Date();
-        }
 
-        private String getAmPmString(int amPm) {
-            return amPm == Calendar.AM ? getString(R.string.am_string) : getString(R.string.pm_string);
+            mTimeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+            mTimeFormat.setCalendar(mCalendar);
+
+            mDate = new Date();
         }
     }
 }

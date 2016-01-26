@@ -1,12 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <dimen name="digital_text_size">50dp</dimen>
-    <dimen name="digital_text_size_round">30dp</dimen>
-    <dimen name="digital_am_pm_text_size">25dp</dimen>
     <dimen name="digital_date_text_size">15dp</dimen>
     <dimen name="digital_high_temp_size">20dp</dimen>
-    <dimen name="digital_low_temp_text_size">18dp</dimen>
-    <dimen name="digital_x_offset">15dp</dimen>
-    <dimen name="digital_x_offset_round">35dp</dimen>
-    <dimen name="digital_y_offset">70dp</dimen>
+    <dimen name="digital_low_temp_text_size">16dp</dimen>
+
+    <dimen name="digital_time_x_offset">15dp</dimen>
+    <dimen name="digital_time_y_offset">70dp</dimen>
+    <dimen name="digital_date_x_offset">40dp</dimen>
+    <dimen name="digital_date_y_offset">95dp</dimen>
+    <dimen name="digital_separator_x_offset">75dp</dimen>
+    <dimen name="digital_separator_y_offset">110dp</dimen>
+    <dimen name="digital_icon_x_offset">50dp</dimen>
+    <dimen name="digital_icon_y_offset">135dp</dimen>
+    <dimen name="digital_high_x_offset">85dp</dimen>
+    <dimen name="digital_high_y_offset">140dp</dimen>
+    <dimen name="digital_low_x_offset">120dp</dimen>
+    <dimen name="digital_low_y_offset">140dp</dimen>
+
+    <dimen name="digital_separator_length">40dp</dimen>
+
+    <integer name="icon_size">60</integer>
+
+    <dimen name="digital_text_size_round">40dp</dimen>
+    <dimen name="digital_x_offset_round">42dp</dimen>
 </resources>
