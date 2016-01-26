@@ -188,6 +188,7 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
                     .setBackgroundVisibility(WatchFaceStyle.BACKGROUND_VISIBILITY_INTERRUPTIVE)
                     .setShowSystemUiTime(false)
                     .setAcceptsTapEvents(true)
+                    .setStatusBarGravity(Gravity.TOP | Gravity.RIGHT)
                     .setHotwordIndicatorGravity(Gravity.TOP | Gravity.CENTER)
                     .setViewProtectionMode(WatchFaceStyle.PROTECT_HOTWORD_INDICATOR)
                     .build());
@@ -411,7 +412,7 @@ public class DigitalWatchFace extends CanvasWatchFaceService {
             Resources resources = DigitalWatchFace.this.getResources();
             boolean isRound = insets.isRound();
             mTimeXOffset = resources.getDimension(isRound
-                    ? R.dimen.digital_x_offset_round : R.dimen.digital_time_x_offset);
+                    ? R.dimen.digital_time_x_offset_round : R.dimen.digital_time_x_offset);
 
             // TODO: 26/01/2016 move to onCreate
             mDateXOffset = resources.getDimension(R.dimen.digital_date_x_offset);
